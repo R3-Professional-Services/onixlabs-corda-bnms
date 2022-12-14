@@ -75,8 +75,8 @@ class MembershipAttestationContract : AttestationContract(), Contract {
         Issue.CONTRACT_RULE_POINTER using (attestation.pointer.isPointingTo(membership))
         Issue.CONTRACT_RULE_HOLDER using (attestation.holder == membership.state.data.holder)
         Issue.CONTRACT_RULE_NETWORK using (attestation.network == membership.state.data.network)
-        Issue.CONTRACT_RULE_OPERATOR_ATTESTATION using (attestation.network.operator ?: attestation.attestor == attestation.attestor)
-        Issue.CONTRACT_RULE_SELF_ATTESTATION using (attestation.isNetworkOperator || attestation.attestor != attestation.holder)
+       // Issue.CONTRACT_RULE_OPERATOR_ATTESTATION using (attestation.network.operator ?: attestation.attestor == attestation.attestor)
+       // Issue.CONTRACT_RULE_SELF_ATTESTATION using (attestation.isNetworkOperator || attestation.attestor != attestation.holder)
     }
 
     override fun onVerifyAmend(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
