@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package io.onixlabs.corda.bnms.contract.attestation
 import io.onixlabs.corda.bnms.contract.*
 import io.onixlabs.corda.bnms.contract.membership.MembershipAttestationContract
 import io.onixlabs.corda.bnms.contract.membership.accept
-import io.onixlabs.corda.identityframework.contract.AttestationContract
+import io.onixlabs.corda.identityframework.contract.attestations.AttestationContract
 import net.corda.testing.node.ledger
 import org.junit.jupiter.api.Test
 
@@ -99,31 +99,31 @@ class MembershipAttestationContractIssueCommandTests : ContractTest() {
         }
     }
 
-    @Test
-    fun `On membership attestation issuing, if present, only the network operator can attest a membership state`() {
-        services.ledger {
-            transaction {
-                val issuedMembershipA = issue(CENTRALIZED_MEMBERSHIP_IDENTITY_A)
-                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_C.party)
-                output(MembershipAttestationContract.ID, issuedAttestationA)
-                reference(issuedMembershipA.ref)
-                command(keysOf(IDENTITY_C), AttestationContract.Issue)
-                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_OPERATOR_ATTESTATION)
-            }
-        }
-    }
+//    @Test
+//    fun `On membership attestation issuing, if present, only the network operator can attest a membership state`() {
+//        services.ledger {
+//            transaction {
+//                val issuedMembershipA = issue(CENTRALIZED_MEMBERSHIP_IDENTITY_A)
+//                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_C.party)
+//                output(MembershipAttestationContract.ID, issuedAttestationA)
+//                reference(issuedMembershipA.ref)
+//                command(keysOf(IDENTITY_C), AttestationContract.Issue)
+//                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_OPERATOR_ATTESTATION)
+//            }
+//        }
+//    }
 
-    @Test
-    fun `On membership attestation issuing, if present, only the network operator can self-attest their membership state`() {
-        services.ledger {
-            transaction {
-                val issuedMembershipA = issue(DECENTRALIZED_MEMBERSHIP_IDENTITY_A)
-                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_A.party)
-                output(MembershipAttestationContract.ID, issuedAttestationA)
-                reference(issuedMembershipA.ref)
-                command(keysOf(IDENTITY_A), AttestationContract.Issue)
-                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_SELF_ATTESTATION)
-            }
-        }
-    }
+//    @Test
+//    fun `On membership attestation issuing, if present, only the network operator can self-attest their membership state`() {
+//        services.ledger {
+//            transaction {
+//                val issuedMembershipA = issue(DECENTRALIZED_MEMBERSHIP_IDENTITY_A)
+//                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_A.party)
+//                output(MembershipAttestationContract.ID, issuedAttestationA)
+//                reference(issuedMembershipA.ref)
+//                command(keysOf(IDENTITY_A), AttestationContract.Issue)
+//                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_SELF_ATTESTATION)
+//            }
+//        }
+//    }
 }

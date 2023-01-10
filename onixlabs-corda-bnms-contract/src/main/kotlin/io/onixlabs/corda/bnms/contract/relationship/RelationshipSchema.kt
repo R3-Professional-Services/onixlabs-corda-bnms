@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,9 @@ object RelationshipSchema {
         @Column(name = "network_value", nullable = false)
         val networkValue: String = "",
 
+        @Column(name = "normalized_network_value", nullable = false)
+        val normalizedNetworkValue: String = "",
+
         @Column(name = "network_operator", nullable = true)
         val networkOperator: AbstractParty? = null,
 
@@ -51,5 +54,15 @@ object RelationshipSchema {
 
         @Column(name = "hash", nullable = false, unique = true)
         val hash: String = ""
-    ) : PersistentState()
+    ) : PersistentState() {
+        constructor(relationship: Relationship) : this(
+            linearId = relationship.linearId.id,
+            externalId = relationship.linearId.externalId,
+            networkValue = relationship.network.value,
+            normalizedNetworkValue = relationship.network.normalizedValue,
+            networkOperator = relationship.network.operator,
+            networkHash = relationship.network.hash.toString(),
+            hash = relationship.hash.toString()
+        )
+    }
 }

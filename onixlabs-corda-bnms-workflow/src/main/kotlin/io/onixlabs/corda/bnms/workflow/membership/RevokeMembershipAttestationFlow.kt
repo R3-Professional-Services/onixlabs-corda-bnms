@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,8 @@ package io.onixlabs.corda.bnms.workflow.membership
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.membership.MembershipAttestation
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
-import io.onixlabs.corda.bnms.workflow.*
+import io.onixlabs.corda.bnms.workflow.addRevokedMembershipAttestation
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
@@ -38,22 +35,30 @@ class RevokeMembershipAttestationFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
-        checkSufficientSessions(sessions, attestation.state.data)
+        currentStep(InitializeFlowStep)
+        checkSufficientSessionsForContractStates(sessions, attestation.state.data)
 
-        val transaction = transaction(attestation.state.notary) {
-            addRevokedAttestation(attestation)
+        val transaction = buildTransaction(attestation.state.notary) {
+            addRevokedMembershipAttestation(attestation)
         }
 
-        val signedTransaction = verifyAndSign(transaction, attestation.state.data.attestor.owningKey)
-        return finalize(signedTransaction, sessions)
+        verifyTransaction(transaction)
+        val signedTransaction = signTransaction(transaction)
+        return finalizeTransaction(signedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -65,23 +70,23 @@ class RevokeMembershipAttestationFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object REVOKING : Step("Revoking membership attestation.") {
+            object RevokeMembershipAttestationStep : Step("Revoking membership attestation.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(REVOKING)
+        override val progressTracker = ProgressTracker(RevokeMembershipAttestationStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(REVOKING)
+            currentStep(RevokeMembershipAttestationStep)
             val sessions = initiateFlows(observers, attestation.state.data)
 
             return subFlow(
                 RevokeMembershipAttestationFlow(
                     attestation,
                     sessions,
-                    REVOKING.childProgressTracker()
+                    RevokeMembershipAttestationStep.childProgressTracker()
                 )
             )
         }

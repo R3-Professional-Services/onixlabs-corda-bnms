@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,8 @@
 
 package io.onixlabs.corda.bnms.contract
 
-inline fun <T, K> Iterable<T>.isDistinctBy(selector: (T) -> K): Boolean {
-    return count() == distinctBy(selector).count()
-}
-
-inline fun <reified T : Any> Setting<*>.cast(): Setting<T> {
-    return Setting(property, T::class.java.cast(value))
-}
+/**
+ * Represents the marker for functions that belong to the configuration builder.
+ */
+@DslMarker
+annotation class ConfigurationBuilderDslContext

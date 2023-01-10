@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,19 @@ package io.onixlabs.corda.bnms.workflow.relationship
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
+import io.onixlabs.corda.bnms.workflow.CheckMembershipStep
+import io.onixlabs.corda.bnms.workflow.ReceiveCheckMembershipInstructionStep
+import io.onixlabs.corda.bnms.workflow.checkMembershipHandler
 import io.onixlabs.corda.bnms.workflow.checkMembershipsAndAttestations
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.identityframework.workflow.FINALIZING
-import io.onixlabs.corda.identityframework.workflow.SIGNING
-import net.corda.core.flows.*
+import io.onixlabs.corda.core.workflow.*
+import net.corda.core.flows.FlowException
+import net.corda.core.flows.FlowLogic
+import net.corda.core.flows.FlowSession
+import net.corda.core.flows.InitiatedBy
 import net.corda.core.node.StatesToRecord
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Step
-import net.corda.core.utilities.unwrap
 
 class IssueRelationshipFlowHandler(
     private val session: FlowSession,
@@ -36,47 +39,45 @@ class IssueRelationshipFlowHandler(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(RECEIVING, SIGNING, FINALIZING)
-
-        private object RECEIVING : Step("Receiving check membership instruction.")
+        fun tracker() = ProgressTracker(
+            ReceiveCheckMembershipInstructionStep,
+            SignTransactionStep,
+            CheckMembershipStep,
+            ReceiveStatesToRecordStep,
+            RecordFinalizedTransactionStep
+        )
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(RECEIVING)
-        val checkMembership = session.receive<Boolean>().unwrap { it }
+        val checkMembership = checkMembershipHandler(session)
+        val transaction = collectSignaturesHandler(session) {
+            if (checkMembership) {
+                val relationship = it.tx.outputsOfType<Relationship>().singleOrNull()
+                    ?: throw FlowException("Failed to obtain a relationship from the transaction.")
 
-        currentStep(SIGNING)
-        val transaction = subFlow(object : SignTransactionFlow(session) {
-            override fun checkTransaction(stx: SignedTransaction) {
-                if (checkMembership) {
-                    val relationship = stx.tx.outputsOfType<Relationship>().singleOrNull()
-                        ?: throw FlowException("Failed to obtain a relationship from the transaction.")
-
-                    checkMembershipsAndAttestations(relationship)
-                }
+                checkMembershipsAndAttestations(relationship)
             }
-        })
+        }
 
-        currentStep(FINALIZING)
-        return subFlow(ReceiveFinalityFlow(session, transaction.id, StatesToRecord.ONLY_RELEVANT))
+        return finalizeTransactionHandler(session, transaction?.id, StatesToRecord.ONLY_RELEVANT)
     }
 
     @InitiatedBy(IssueRelationshipFlow.Initiator::class)
     private class Handler(private val session: FlowSession) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object OBSERVING : Step("Observing relationship issuance.") {
+            object HandleIssueRelationshipStep : Step("Handling relationship issuance.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(OBSERVING)
+        override val progressTracker = ProgressTracker(HandleIssueRelationshipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(OBSERVING)
-            return subFlow(IssueRelationshipFlowHandler(session, OBSERVING.childProgressTracker()))
+            currentStep(HandleIssueRelationshipStep)
+            return subFlow(IssueRelationshipFlowHandler(session, HandleIssueRelationshipStep.childProgressTracker()))
         }
     }
 }

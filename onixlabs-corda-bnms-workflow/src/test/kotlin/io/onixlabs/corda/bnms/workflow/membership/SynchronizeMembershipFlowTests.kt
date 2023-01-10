@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@
 
 package io.onixlabs.corda.bnms.workflow.membership
 
-import io.onixlabs.corda.bnms.contract.membership.Membership
-import io.onixlabs.corda.bnms.contract.membership.MembershipAttestation
-import io.onixlabs.corda.bnms.contract.membership.accept
+import io.onixlabs.corda.bnms.contract.membership.*
 import io.onixlabs.corda.bnms.workflow.FlowTest
 import io.onixlabs.corda.bnms.workflow.Pipeline
+import io.onixlabs.corda.core.services.equalTo
+import io.onixlabs.corda.core.services.singleOrNull
+import io.onixlabs.corda.core.services.vaultServiceFor
 import net.corda.core.contracts.StateAndRef
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
+import kotlin.test.assertNotNull
 
 class SynchronizeMembershipFlowTests : FlowTest() {
 
@@ -59,41 +61,43 @@ class SynchronizeMembershipFlowTests : FlowTest() {
 
     @Test
     fun `Party A has recorded Party C's Membership`() {
-        Pipeline
-            .create(network)
-            .run(nodeA) {
-                FindMembershipFlow(holder = partyC, network = NETWORK)
-            }
-            .finally { assert(it != null) }
+        val membership = nodeA.services.vaultServiceFor<Membership>().singleOrNull {
+            expression(MembershipSchema.MembershipEntity::holder equalTo partyC)
+            expression(MembershipSchema.MembershipEntity::networkHash equalTo NETWORK.hash.toString())
+        }
+
+        assertNotNull(membership)
     }
 
     @Test
     fun `Party A has recorded Party B's MembershipAttestation for Party C`() {
-        Pipeline
-            .create(network)
-            .run(nodeA) {
-                FindMembershipAttestationFlow(holder = partyC, network = NETWORK, attestor = partyB)
-            }
-            .finally { assert(it != null) }
+        val attestation = nodeA.services.vaultServiceFor<MembershipAttestation>().singleOrNull {
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::holder equalTo partyC)
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::networkHash equalTo NETWORK.hash.toString())
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::attestor equalTo partyB)
+        }
+
+        assertNotNull(attestation)
     }
 
     @Test
     fun `Party C has recorded Party A's Membership`() {
-        Pipeline
-            .create(network)
-            .run(nodeC) {
-                FindMembershipFlow(holder = partyA, network = NETWORK)
-            }
-            .finally { assert(it != null) }
+        val membership = nodeC.services.vaultServiceFor<Membership>().singleOrNull {
+            expression(MembershipSchema.MembershipEntity::holder equalTo partyA)
+            expression(MembershipSchema.MembershipEntity::networkHash equalTo NETWORK.hash.toString())
+        }
+
+        assertNotNull(membership)
     }
 
     @Test
     fun `Party C has recorded Party B's MembershipAttestation for Party A`() {
-        Pipeline
-            .create(network)
-            .run(nodeA) {
-                FindMembershipAttestationFlow(holder = partyA, network = NETWORK, attestor = partyB)
-            }
-            .finally { assert(it != null) }
+        val attestation = nodeC.services.vaultServiceFor<MembershipAttestation>().singleOrNull {
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::holder equalTo partyA)
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::networkHash equalTo NETWORK.hash.toString())
+            expression(MembershipAttestationSchema.MembershipAttestationEntity::attestor equalTo partyB)
+        }
+
+        assertNotNull(attestation)
     }
 }

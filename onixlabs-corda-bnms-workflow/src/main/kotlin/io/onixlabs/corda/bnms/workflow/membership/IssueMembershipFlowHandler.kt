@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,18 @@
 package io.onixlabs.corda.bnms.workflow.membership
 
 import co.paralleluniverse.fibers.Suspendable
+import io.onixlabs.corda.core.workflow.ReceiveStatesToRecordStep
+import io.onixlabs.corda.core.workflow.RecordFinalizedTransactionStep
 import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.identityframework.workflow.FINALIZING
+import io.onixlabs.corda.core.workflow.finalizeTransactionHandler
 import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.FlowSession
 import net.corda.core.flows.InitiatedBy
-import net.corda.core.flows.ReceiveFinalityFlow
 import net.corda.core.node.StatesToRecord
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.ProgressTracker.Step
 
 class IssueMembershipFlowHandler(
     private val session: FlowSession,
@@ -37,30 +39,37 @@ class IssueMembershipFlowHandler(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(FINALIZING)
+        fun tracker() = ProgressTracker(
+            ReceiveStatesToRecordStep,
+            RecordFinalizedTransactionStep
+        )
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(FINALIZING)
-        return subFlow(ReceiveFinalityFlow(session, expectedTransactionId, statesToRecord))
+        return finalizeTransactionHandler(session, expectedTransactionId, statesToRecord)
     }
 
     @InitiatedBy(IssueMembershipFlow.Initiator::class)
     private class Handler(private val session: FlowSession) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object OBSERVING : ProgressTracker.Step("Observing membership issuance.") {
+            object HandleIssuedMembershipStep : Step("Handling membership issuance.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(OBSERVING)
+        override val progressTracker = ProgressTracker(HandleIssuedMembershipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(OBSERVING)
-            return subFlow(IssueMembershipFlowHandler(session, progressTracker = OBSERVING.childProgressTracker()))
+            currentStep(HandleIssuedMembershipStep)
+            return subFlow(
+                IssueMembershipFlowHandler(
+                    session,
+                    progressTracker = HandleIssuedMembershipStep.childProgressTracker()
+                )
+            )
         }
     }
 }

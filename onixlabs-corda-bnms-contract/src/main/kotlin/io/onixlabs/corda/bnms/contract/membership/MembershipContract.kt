@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,25 @@
 
 package io.onixlabs.corda.bnms.contract.membership
 
-import net.corda.core.contracts.*
+import io.onixlabs.corda.core.contract.ContractID
+import io.onixlabs.corda.core.contract.VerifiedCommandData
+import io.onixlabs.corda.core.contract.allowCommands
+import net.corda.core.contracts.Contract
+import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
 import java.security.PublicKey
 
 class MembershipContract : Contract {
 
-    companion object {
-        @JvmStatic
-        val ID: ContractClassName = this::class.java.enclosingClass.canonicalName
-    }
+    companion object : ContractID
 
-    override fun verify(tx: LedgerTransaction) {
-        val command = tx.commands.requireSingleCommand<MembershipContractCommand>()
-        when (command.value) {
-            is Issue, is Amend, is Revoke -> command.value.verifyCommand(tx, command.signers.toSet())
-            else -> throw IllegalArgumentException("Unrecognised command: ${command.value}")
-        }
-    }
+    override fun verify(tx: LedgerTransaction) = tx.allowCommands(
+        Issue::class.java,
+        Amend::class.java,
+        Revoke::class.java
+    )
 
-    interface MembershipContractCommand : CommandData {
-        fun verifyCommand(transaction: LedgerTransaction, signers: Set<PublicKey>)
-    }
+    interface MembershipContractCommand : VerifiedCommandData
 
     object Issue : MembershipContractCommand {
 
@@ -51,9 +48,9 @@ class MembershipContract : Contract {
             "On membership issuing, the previous state reference of the created membership state must be null."
 
         internal const val CONTRACT_RULE_SIGNERS =
-            "On membership issuing, either the holder or the network operator of the creates membership state must sign the transaction."
+            "On membership issuing, either the holder or the network operator of the created membership state must sign the transaction."
 
-        override fun verifyCommand(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
+        override fun verify(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
             val inputs = transaction.inputsOfType<Membership>()
             val outputs = transaction.outputsOfType<Membership>()
 
@@ -84,7 +81,7 @@ class MembershipContract : Contract {
         internal const val CONTRACT_RULE_SIGNERS =
             "On membership amending, either the holder or the network operator of the created membership state must sign the transaction."
 
-        override fun verifyCommand(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
+        override fun verify(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
             val inputs = transaction.inRefsOfType<Membership>()
             val outputs = transaction.outputsOfType<Membership>()
 
@@ -111,7 +108,7 @@ class MembershipContract : Contract {
         internal const val CONTRACT_RULE_SIGNERS =
             "On membership revoking, either the holder or the network operator of the consumed membership state must sign the transaction."
 
-        override fun verifyCommand(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
+        override fun verify(transaction: LedgerTransaction, signers: Set<PublicKey>) = requireThat {
             val inputs = transaction.inRefsOfType<Membership>()
             val outputs = transaction.outputsOfType<Membership>()
 

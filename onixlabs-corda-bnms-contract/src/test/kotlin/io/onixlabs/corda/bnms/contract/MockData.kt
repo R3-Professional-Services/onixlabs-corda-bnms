@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package io.onixlabs.corda.bnms.contract
 
 import io.onixlabs.corda.bnms.contract.membership.Membership
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
-import io.onixlabs.corda.bnms.contract.relationship.RelationshipMember
 import io.onixlabs.corda.bnms.contract.revocation.RevocationLock
 import net.corda.core.contracts.StateRef
 import net.corda.core.crypto.SecureHash
@@ -53,7 +52,7 @@ val DECENTRALIZED_MEMBERSHIP_IDENTITY_A = Membership(DECENTRALIZED_NETWORK, IDEN
 val DECENTRALIZED_MEMBERSHIP_IDENTITY_B = Membership(DECENTRALIZED_NETWORK, IDENTITY_B.party)
 val DECENTRALIZED_MEMBERSHIP_IDENTITY_C = Membership(DECENTRALIZED_NETWORK, IDENTITY_C.party)
 
-val MEMBERS = setOf(RelationshipMember(IDENTITY_A.party), RelationshipMember(IDENTITY_B.party))
+val MEMBERS = mapOf(IDENTITY_A.party to Configuration(), IDENTITY_B.party to Configuration())
 val RELATIONSHIP = Relationship(CENTRALIZED_NETWORK, MEMBERS)
 
 val REVOCATION_LOCK = RevocationLock(IDENTITY_A.party, DummyLinearContract.State())

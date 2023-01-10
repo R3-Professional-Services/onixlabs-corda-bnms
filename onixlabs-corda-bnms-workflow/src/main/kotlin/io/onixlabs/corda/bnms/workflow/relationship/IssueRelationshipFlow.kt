@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,11 @@ package io.onixlabs.corda.bnms.workflow.relationship
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
-import io.onixlabs.corda.bnms.contract.relationship.RelationshipContract
-import io.onixlabs.corda.bnms.contract.revocation.RevocationLockContract
-import io.onixlabs.corda.bnms.workflow.checkMembershipsAndAttestations
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.getPreferredNotary
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
-import io.onixlabs.corda.bnms.workflow.*
+import io.onixlabs.corda.bnms.workflow.CheckMembershipStep
+import io.onixlabs.corda.bnms.workflow.SendCheckMembershipInstructionStep
+import io.onixlabs.corda.bnms.workflow.addIssuedRelationship
+import io.onixlabs.corda.bnms.workflow.checkMembership
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
@@ -43,31 +39,35 @@ class IssueRelationshipFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, COUNTERSIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            SendCheckMembershipInstructionStep,
+            CheckMembershipStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            CollectTransactionSignaturesStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
-        checkSufficientSessions(sessions, relationship)
-        sessions.forEach { it.send(checkMembership) }
+        currentStep(InitializeFlowStep)
+        checkSufficientSessionsForContractStates(sessions, relationship)
+        checkMembership(checkMembership, relationship, sessions)
 
-        if (checkMembership) {
-            checkMembershipsAndAttestations(relationship)
+        val transaction = buildTransaction(notary) {
+            addIssuedRelationship(relationship)
         }
 
-        val transaction = transaction(notary) {
-            addOutputState(relationship, RelationshipContract.ID)
-            relationship.createRevocationLocks().forEach { addOutputState(it) }
-            addCommand(RelationshipContract.Issue, relationship.participants.map { it.owningKey })
-            addCommand(RevocationLockContract.Lock, relationship.participants.map { it.owningKey })
-        }
-
-        val partiallySignedTransaction = verifyAndSign(transaction, ourIdentity.owningKey)
-        val fullySignedTransaction = countersign(partiallySignedTransaction, sessions)
-        return finalize(fullySignedTransaction, sessions)
+        verifyTransaction(transaction)
+        val partiallySignedTransaction = signTransaction(transaction)
+        val fullySignedTransaction = collectSignatures(partiallySignedTransaction, sessions)
+        return finalizeTransaction(fullySignedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -80,16 +80,16 @@ class IssueRelationshipFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object ISSUING : Step("Issuing relationship.") {
+            object IssueRelationshipStep : Step("Issuing relationship.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(ISSUING)
+        override val progressTracker = ProgressTracker(IssueRelationshipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(ISSUING)
+            currentStep(IssueRelationshipStep)
             val sessions = initiateFlows(emptyList(), relationship)
 
             return subFlow(
@@ -98,7 +98,7 @@ class IssueRelationshipFlow(
                     notary ?: getPreferredNotary(),
                     sessions,
                     checkMembership,
-                    ISSUING.childProgressTracker()
+                    IssueRelationshipStep.childProgressTracker()
                 )
             )
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import io.onixlabs.corda.bnms.workflow.membership.AmendMembershipFlow
 import io.onixlabs.corda.bnms.workflow.membership.IssueMembershipFlow
 import io.onixlabs.corda.bnms.workflow.membership.RevokeMembershipFlow
 import io.onixlabs.corda.core.integration.RPCService
-import io.onixlabs.corda.identityframework.contract.AbstractClaim
+import io.onixlabs.corda.identityframework.contract.claims.AbstractClaim
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
@@ -32,7 +32,7 @@ import net.corda.core.messaging.*
 import net.corda.core.transactions.SignedTransaction
 import java.util.*
 
-class MembershipCommandService(rpc: CordaRPCOps) : RPCService(rpc) {
+class MembershipService(rpc: CordaRPCOps) : RPCService(rpc) {
 
     fun issueMembership(
         network: Network,

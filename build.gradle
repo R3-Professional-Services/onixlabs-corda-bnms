@@ -5,7 +5,7 @@ buildscript {
 
         corda_artifactory_url = 'https://software.r3.com/artifactory'
         corda_group = 'net.corda'
-        corda_release_version = '4.6'
+        corda_release_version = '4.9'
 
         corda_gradle_plugin_group = 'net.corda.plugins'
         corda_gradle_plugin_version = '5.0.4'
@@ -14,10 +14,10 @@ buildscript {
         junit_version = '5.3.1'
 
         onixlabs_group = 'io.onixlabs'
-        onixlabs_corda_core_release_version = '1.2.0'
-        onixlabs_corda_idfx_release_version = '2.0.0-rc2'
+        onixlabs_corda_core_release_version = '4.0.3'
+        onixlabs_corda_idfx_release_version = '4.0.3'
 
-        cordapp_platform_version = 8
+        cordapp_platform_version = 11
         cordapp_contract_name = 'ONIXLabs Corda BNMS Contract'
         cordapp_workflow_name = 'ONIXLabs Corda BNMS Workflow'
         cordapp_vendor_name = 'ONIXLabs'
@@ -34,7 +34,6 @@ buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
-        jcenter()
         maven { url "$corda_artifactory_url/corda-releases" }
         maven { url "$corda_artifactory_url/corda-dependencies" }
     }
@@ -45,21 +44,28 @@ buildscript {
     }
 }
 
-group 'io.onixlabs'
-version '1.0.0'
+group getProperty('group')
+version getProperty('version')
 
 subprojects {
     repositories {
         mavenLocal()
         mavenCentral()
-        jcenter()
         maven { url "https://jitpack.io" }
         maven { url "$corda_artifactory_url/corda-releases" }
         maven { url "$corda_artifactory_url/corda-dependencies" }
         maven { url "https://repo.gradle.org/gradle/libs-releases" }
         maven {
-            name = "GitHubPackagesCIF"
-            url = uri("https://maven.pkg.github.com/onix-labs/onixlabs-corda-identity-framework-beta")
+            name = "GitHubPackages-onixlabs-corda-core"
+            url = uri("https://maven.pkg.github.com/onix-labs/onixlabs-corda-core")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+        maven {
+            name = "GitHubPackages-onixlabs-corda-identity-framework"
+            url = uri("https://maven.pkg.github.com/onix-labs/onixlabs-corda-identity-framework")
             credentials {
                 username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
                 password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
@@ -87,10 +93,16 @@ subprojects {
         }
     }
 
+    task sourceJar(type: Jar) {
+        from sourceSets.main.allSource
+        archiveClassifier = "sources"
+    }
+
     jar { exclude '**/log4j2*.xml' }
 
     test {
         jvmArgs = ["-ea", "-javaagent:../lib/quasar.jar"]
+        maxHeapSize = "4096m"
         useJUnitPlatform()
     }
 }

@@ -1,13 +1,9 @@
 package io.onixlabs.corda.bnms.workflow.membership
 
 import co.paralleluniverse.fibers.Suspendable
-import io.onixlabs.corda.bnms.contract.membership.Membership
 import io.onixlabs.corda.bnms.contract.membership.MembershipAttestation
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.findTransaction
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.INITIALIZING
-import io.onixlabs.corda.identityframework.workflow.SENDING
+import io.onixlabs.corda.bnms.workflow.SendMembershipAttestationStep
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
@@ -22,20 +18,16 @@ class PublishMembershipAttestationFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, SENDING)
+        fun tracker() = ProgressTracker(InitializeFlowStep, SendMembershipAttestationStep)
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
+        currentStep(InitializeFlowStep)
         val transaction = findTransaction(attestation)
-
-        currentStep(SENDING)
-        sessions.forEach { subFlow(SendTransactionFlow(it, transaction)) }
-
-        return transaction
+        return publishTransaction(transaction, sessions, SendMembershipAttestationStep)
     }
 
     @StartableByRPC
@@ -47,21 +39,21 @@ class PublishMembershipAttestationFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object PUBLISHING : ProgressTracker.Step("Publishing membership attestation transaction.") {
+            object PublishMembershipAttestationStep : ProgressTracker.Step("Publishing membership attestation.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(PUBLISHING)
+        override val progressTracker = ProgressTracker(PublishMembershipAttestationStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(PUBLISHING)
+            currentStep(PublishMembershipAttestationStep)
             return subFlow(
                 PublishMembershipAttestationFlow(
                     attestation,
                     initiateFlows(observers),
-                    PUBLISHING.childProgressTracker()
+                    PublishMembershipAttestationStep.childProgressTracker()
                 )
             )
         }

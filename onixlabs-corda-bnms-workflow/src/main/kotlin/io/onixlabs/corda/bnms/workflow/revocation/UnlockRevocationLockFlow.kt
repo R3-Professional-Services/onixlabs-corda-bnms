@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,8 @@ package io.onixlabs.corda.bnms.workflow.revocation
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.revocation.RevocationLock
-import io.onixlabs.corda.bnms.contract.revocation.RevocationLockContract
-import io.onixlabs.corda.bnms.workflow.finalize
-import io.onixlabs.corda.bnms.workflow.transaction
-import io.onixlabs.corda.bnms.workflow.verifyAndSign
-import io.onixlabs.corda.identityframework.workflow.FINALIZING
-import io.onixlabs.corda.identityframework.workflow.GENERATING
-import io.onixlabs.corda.identityframework.workflow.SIGNING
-import io.onixlabs.corda.identityframework.workflow.VERIFYING
+import io.onixlabs.corda.bnms.workflow.addUnlockedRevocationLock
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.StartableByRPC
@@ -36,24 +30,29 @@ import net.corda.core.utilities.ProgressTracker
 @StartableByRPC
 @StartableByService
 class UnlockRevocationLockFlow(
-    private val revocationLock: StateAndRef<RevocationLock<*>>
+    private val revocationLock: StateAndRef<RevocationLock<*>>,
+    override val progressTracker: ProgressTracker = tracker()
 ) : FlowLogic<SignedTransaction>() {
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(GENERATING, VERIFYING, SIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
     }
-
-    override val progressTracker = tracker()
 
     @Suspendable
     override fun call(): SignedTransaction {
-        val transaction = transaction(revocationLock.state.notary) {
-            addInputState(revocationLock)
-            addCommand(RevocationLockContract.Unlock, revocationLock.state.data.owner.owningKey)
+        val transaction = buildTransaction(revocationLock.state.notary) {
+            addUnlockedRevocationLock(revocationLock)
         }
 
-        val signedTransaction = verifyAndSign(transaction, revocationLock.state.data.owner.owningKey)
-        return finalize(signedTransaction)
+        verifyTransaction(transaction)
+        val signedTransaction = signTransaction(transaction)
+        return finalizeTransaction(signedTransaction, emptyList())
     }
 }

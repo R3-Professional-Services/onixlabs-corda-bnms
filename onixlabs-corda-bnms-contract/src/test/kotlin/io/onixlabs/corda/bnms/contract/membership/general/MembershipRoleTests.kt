@@ -12,10 +12,10 @@ class MembershipRoleTests {
     fun `Membership hasRole should return true when the expected role is present`() {
 
         // Arrange
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addRoles("Test")
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addRoles("Test") }
 
         // Act
-        val result = membership.hasRole("Test")
+        val result = membership.configuration.hasRole("Test")
 
         // Assert
         assertTrue(result)

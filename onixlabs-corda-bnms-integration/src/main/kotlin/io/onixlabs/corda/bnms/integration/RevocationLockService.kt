@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import net.corda.core.messaging.*
 import net.corda.core.transactions.SignedTransaction
 import java.util.*
 
-class RevocationLockCommandService(rpc: CordaRPCOps) : RPCService(rpc) {
+class RevocationLockService(rpc: CordaRPCOps) : RPCService(rpc) {
 
     fun <T : LinearState> lock(
         state: T,
@@ -36,7 +36,12 @@ class RevocationLockCommandService(rpc: CordaRPCOps) : RPCService(rpc) {
         notary: Party? = null
     ): FlowProgressHandle<SignedTransaction> {
         val lock = RevocationLock(owner, state)
-        return rpc.startTrackedFlow(::LockRevocationLockFlow, lock, notary)
+        return rpc.startTrackedFlow(
+            ::LockRevocationLockFlow,
+            lock,
+            notary,
+            LockRevocationLockFlow.tracker()
+        )
     }
 
     fun <T : LinearState> lock(
@@ -46,19 +51,34 @@ class RevocationLockCommandService(rpc: CordaRPCOps) : RPCService(rpc) {
         clientId: String = UUID.randomUUID().toString()
     ): FlowHandleWithClientId<SignedTransaction> {
         val lock = RevocationLock(owner, state)
-        return rpc.startFlowWithClientId(clientId, ::LockRevocationLockFlow, lock, notary)
+        return rpc.startFlowWithClientId(
+            clientId,
+            ::LockRevocationLockFlow,
+            lock,
+            notary,
+            LockRevocationLockFlow.tracker()
+        )
     }
 
     fun <T : LinearState> unlock(
         lock: StateAndRef<RevocationLock<T>>
     ): FlowProgressHandle<SignedTransaction> {
-        return rpc.startTrackedFlow(::UnlockRevocationLockFlow, lock)
+        return rpc.startTrackedFlow(
+            ::UnlockRevocationLockFlow,
+            lock,
+            UnlockRevocationLockFlow.tracker()
+        )
     }
 
     fun <T : LinearState> unlock(
         lock: StateAndRef<RevocationLock<T>>,
         clientId: String = UUID.randomUUID().toString()
     ): FlowHandleWithClientId<SignedTransaction> {
-        return rpc.startFlowWithClientId(clientId, ::UnlockRevocationLockFlow, lock)
+        return rpc.startFlowWithClientId(
+            clientId,
+            ::UnlockRevocationLockFlow,
+            lock,
+            UnlockRevocationLockFlow.tracker()
+        )
     }
 }

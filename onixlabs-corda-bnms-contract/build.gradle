@@ -28,6 +28,7 @@ dependencies {
 
     // CorDapp Dependencies
     cordapp "$onixlabs_group:onixlabs-corda-core-contract:$onixlabs_corda_core_release_version"
+    cordapp "$onixlabs_group:onixlabs-corda-core-workflow:$onixlabs_corda_core_release_version"
     cordapp "$onixlabs_group:onixlabs-corda-identity-framework-contract:$onixlabs_corda_idfx_release_version"
 
     // Test Dependencies
@@ -41,7 +42,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/onix-labs/onixlabs-corda-bnms")
+            url = uri("https://maven.pkg.github.com/R3-Professional-Services/onixlabs-corda-bnms")
             credentials {
                 username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
                 password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
@@ -53,6 +54,7 @@ publishing {
             groupId = project.parent.group
             version = project.parent.version
             artifactId = 'onixlabs-corda-bnms-contract'
+            artifact sourceJar
             from components.java
         }
     }

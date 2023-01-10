@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class AmendMembershipFlowTests : FlowTest() {
             }
             .run(nodeA) {
                 val oldMembership = it.tx.outRefsOfType<Membership>().single()
-                membership = oldMembership.getNextOutput().addRoles("Administrator")
+                membership = oldMembership.getNextOutput().configure { addRoles("Administrator") }
                 AmendMembershipFlow.Initiator(oldMembership, membership, observers = setOf(partyB))
             }
             .finally { transaction = it }
@@ -72,7 +72,7 @@ class AmendMembershipFlowTests : FlowTest() {
                     ?: fail("Failed to find a recorded membership.")
 
                 assertEquals(membership, recordedMembership)
-                assert(recordedMembership.hasRole("Administrator"))
+                assert(recordedMembership.configuration.hasRole("Administrator"))
             }
         }
     }

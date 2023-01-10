@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,9 @@ class AmendRelationshipFlowTests : FlowTest() {
             }
             .run(nodeB) {
                 val oldRelationship = it.tx.outRefsOfType<Relationship>().single()
-                relationship = oldRelationship.getNextOutput().addSetting("TestValue", 123)
+                relationship = oldRelationship.getNextOutput().configure(partyA) {
+                    addSetting("TestValue", 123)
+                }
                 AmendRelationshipFlow.Initiator(oldRelationship, relationship, checkMembership = false)
             }
             .finally { transaction = it }
@@ -77,9 +79,10 @@ class AmendRelationshipFlowTests : FlowTest() {
                     ?: fail("Failed to find a recorded relationship.")
 
                 assertEquals(relationship, recordedRelationship)
-                assertEquals(1, relationship.settings.size)
-                assertEquals("TESTVALUE", relationship.settings.single().property)
-                assertEquals(123, relationship.settings.single().value)
+                assertEquals(1, relationship.members[partyA]!!.settings.size)
+                assertEquals("TestValue", relationship.members[partyA]!!.settings.single().property)
+                assertEquals("TESTVALUE", relationship.members[partyA]!!.settings.single().normalizedProperty)
+                assertEquals(123, relationship.members[partyA]!!.settings.single().value)
             }
         }
     }

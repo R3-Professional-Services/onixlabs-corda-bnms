@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,8 @@ package io.onixlabs.corda.bnms.workflow.relationship
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
 import io.onixlabs.corda.bnms.contract.relationship.RelationshipContract
-import io.onixlabs.corda.bnms.workflow.checkMembershipsAndAttestations
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
 import io.onixlabs.corda.bnms.workflow.*
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
@@ -41,30 +37,35 @@ class AmendRelationshipFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, COUNTERSIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            SendCheckMembershipInstructionStep,
+            CheckMembershipStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            CollectTransactionSignaturesStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
-        checkSufficientSessions(sessions, newRelationship)
-        sessions.forEach { it.send(checkMembership) }
+        currentStep(InitializeFlowStep)
+        checkSufficientSessionsForContractStates(sessions, newRelationship)
+        checkMembership(checkMembership, newRelationship, sessions)
 
-        if (checkMembership) {
-            checkMembershipsAndAttestations(newRelationship)
+        val transaction = buildTransaction(oldRelationship.state.notary) {
+            addAmendedRelationship(oldRelationship, newRelationship)
         }
 
-        val transaction = transaction(oldRelationship.state.notary) {
-            addInputState(oldRelationship)
-            addOutputState(newRelationship, RelationshipContract.ID)
-            addCommand(RelationshipContract.Amend, newRelationship.participants.map { it.owningKey })
-        }
-
-        val partiallySignedTransaction = verifyAndSign(transaction, ourIdentity.owningKey)
-        val fullySignedTransaction = countersign(partiallySignedTransaction, sessions)
-        return finalize(fullySignedTransaction, sessions)
+        verifyTransaction(transaction)
+        val partiallySignedTransaction = signTransaction(transaction)
+        val fullySignedTransaction = collectSignatures(partiallySignedTransaction, sessions)
+        return finalizeTransaction(fullySignedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -77,16 +78,16 @@ class AmendRelationshipFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object AMENDING : Step("Amending relationship.") {
+            object AmendRelationshipStep : Step("Amending relationship.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(AMENDING)
+        override val progressTracker = ProgressTracker(AmendRelationshipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(AMENDING)
+            currentStep(AmendRelationshipStep)
             val sessions = initiateFlows(emptyList(), newRelationship, oldRelationship.state.data)
 
             return subFlow(
@@ -95,7 +96,7 @@ class AmendRelationshipFlow(
                     newRelationship,
                     sessions,
                     checkMembership,
-                    AMENDING.childProgressTracker()
+                    AmendRelationshipStep.childProgressTracker()
                 )
             )
         }

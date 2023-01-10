@@ -1,0 +1,20 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+    <changeSet author="ONIXLabs" id="update-v2-membership_attestation_states">
+        <dropColumn tableName="membership_attestation_states"
+                    columnName="pointer_state_linear_id"/>
+        <addColumn tableName="membership_attestation_states">
+            <column name="normalized_network_value" type="nvarchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <renameColumn tableName="membership_attestation_states"
+                      oldColumnName="pointer_state_ref"
+                      newColumnName="pointer"/>
+        <renameColumn tableName="membership_attestation_states"
+                      oldColumnName="pointer_state_class"
+                      newColumnName="pointer_state_type"/>
+    </changeSet>
+</databaseChangeLog>

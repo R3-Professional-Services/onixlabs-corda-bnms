@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,9 @@ package io.onixlabs.corda.bnms.workflow.membership
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.membership.Membership
-import io.onixlabs.corda.bnms.contract.membership.MembershipContract
+import io.onixlabs.corda.bnms.workflow.addAmendedMembership
 import io.onixlabs.corda.bnms.workflow.checkMembershipExists
-import io.onixlabs.corda.bnms.workflow.finalize
-import io.onixlabs.corda.bnms.workflow.transaction
-import io.onixlabs.corda.bnms.workflow.verifyAndSign
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
@@ -43,25 +37,31 @@ class AmendMembershipFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
+        currentStep(InitializeFlowStep)
         checkMembershipExists(newMembership)
-        checkSufficientSessions(sessions, newMembership)
+        checkSufficientSessionsForContractStates(sessions, newMembership)
 
-        val transaction = transaction(oldMembership.state.notary) {
-            addInputState(oldMembership)
-            addOutputState(newMembership, MembershipContract.ID)
-            addCommand(MembershipContract.Amend, ourIdentity.owningKey)
+        val transaction = buildTransaction(oldMembership.state.notary) {
+            addAmendedMembership(oldMembership, newMembership, ourIdentity.owningKey)
         }
 
-        val signedTransaction = verifyAndSign(transaction, ourIdentity.owningKey)
-        return finalize(signedTransaction, sessions)
+        verifyTransaction(transaction)
+        val signedTransaction = signTransaction(transaction)
+        return finalizeTransaction(signedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -74,16 +74,16 @@ class AmendMembershipFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object AMENDING : Step("Amending membership.") {
+            object AmendMembershipStep : Step("Amending membership.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(AMENDING)
+        override val progressTracker = ProgressTracker(AmendMembershipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(AMENDING)
+            currentStep(AmendMembershipStep)
             val sessions = initiateFlows(observers, newMembership)
 
             return subFlow(
@@ -91,7 +91,7 @@ class AmendMembershipFlow(
                     oldMembership,
                     newMembership,
                     sessions,
-                    AMENDING.childProgressTracker()
+                    AmendMembershipStep.childProgressTracker()
                 )
             )
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,4 +16,15 @@
 
 package io.onixlabs.corda.bnms.contract
 
-class Permission(value: String) : Setting<String>(PERMISSION, value.toUpperCase())
+/**
+ * Represents a network permission.
+ *
+ * @property property The property of the permission, which is always "Permission".
+ * @property normalizedProperty The normalized property of the permission, which is always "PERMISSION".
+ * @property value The value of the permission.
+ * @property normalizedValue The normalized value of the permission.
+ * @property hash The hash that uniquely identifies the permission.
+ */
+class Permission(value: String) : StringSetting(PERMISSION, value) {
+    companion object
+}

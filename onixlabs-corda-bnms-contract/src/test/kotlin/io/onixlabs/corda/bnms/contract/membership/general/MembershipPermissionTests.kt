@@ -12,10 +12,10 @@ class MembershipPermissionTests {
     fun `Membership hasPermission should return true when the expected permission is present`() {
 
         // Arrange
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addPermissions("Test")
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addPermissions("Test") }
 
         // Act
-        val result = membership.hasPermission("Test")
+        val result = membership.configuration.hasPermission("Test")
 
         // Assert
         assertTrue(result)

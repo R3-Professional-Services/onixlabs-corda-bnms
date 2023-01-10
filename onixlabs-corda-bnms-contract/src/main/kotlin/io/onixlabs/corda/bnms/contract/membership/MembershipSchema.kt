@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,9 @@ object MembershipSchema {
         @Column(name = "network_value", nullable = false)
         val networkValue: String = "",
 
+        @Column(name = "normalized_network_value", nullable = false)
+        val normalizedNetworkValue: String = "",
+
         @Column(name = "network_operator", nullable = true)
         val networkOperator: AbstractParty? = null,
 
@@ -58,5 +61,17 @@ object MembershipSchema {
 
         @Column(name = "hash", nullable = false, unique = true)
         val hash: String = ""
-    ) : PersistentState()
+    ) : PersistentState() {
+        constructor(membership: Membership) : this(
+            linearId = membership.linearId.id,
+            externalId = membership.linearId.externalId,
+            holder = membership.holder,
+            networkValue = membership.network.value,
+            normalizedNetworkValue = membership.network.normalizedValue,
+            networkOperator = membership.network.operator,
+            networkHash = membership.network.hash.toString(),
+            isNetworkOperator = membership.isNetworkOperator,
+            hash = membership.hash.toString()
+        )
+    }
 }

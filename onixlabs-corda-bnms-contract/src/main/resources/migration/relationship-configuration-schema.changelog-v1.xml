@@ -1,0 +1,42 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+    <changeSet author="ONIXLabs" id="create-relationship-configuration_states">
+        <createTable tableName="relationship_configuration_states">
+            <column name="output_index" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_id" type="nvarchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="linear_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_id" type="nvarchar(255)"/>
+            <column name="relationship_linear_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relationship_external_id" type="nvarchar(255)"/>
+            <column name="network_value" type="nvarchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="normalized_network_value" type="nvarchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="network_operator" type="nvarchar(255)"/>
+            <column name="network_hash" type="nvarchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="configuration_hash" type="nvarchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hash" type="nvarchar(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey columnNames="output_index, transaction_id"
+                       constraintName="PK_relationship_configuration_states"
+                       tableName="relationship_configuration_states"/>
+    </changeSet>
+</databaseChangeLog>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import io.onixlabs.corda.bnms.workflow.relationship.AmendRelationshipAttestation
 import io.onixlabs.corda.bnms.workflow.relationship.IssueRelationshipAttestationFlow
 import io.onixlabs.corda.bnms.workflow.relationship.RevokeRelationshipAttestationFlow
 import io.onixlabs.corda.core.integration.RPCService
-import io.onixlabs.corda.identityframework.contract.AttestationStatus
+import io.onixlabs.corda.identityframework.contract.attestations.AttestationStatus
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
@@ -32,7 +32,7 @@ import net.corda.core.messaging.*
 import net.corda.core.transactions.SignedTransaction
 import java.util.*
 
-class RelationshipAttestationCommandService(rpc: CordaRPCOps) : RPCService(rpc) {
+class RelationshipAttestationService(rpc: CordaRPCOps) : RPCService(rpc) {
 
     fun issueRelationshipAttestation(
         relationship: StateAndRef<Relationship>,

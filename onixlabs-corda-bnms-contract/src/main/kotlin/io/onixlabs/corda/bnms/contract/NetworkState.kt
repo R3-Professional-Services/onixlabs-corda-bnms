@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
 
 package io.onixlabs.corda.bnms.contract
 
-import io.onixlabs.corda.core.contract.ChainState
-import net.corda.core.contracts.LinearState
-import net.corda.core.schemas.QueryableState
+import net.corda.core.contracts.ContractState
 
-interface NetworkState : ChainState, LinearState, QueryableState {
+/**
+ * Defines a contract state that belongs to a business network.
+ *
+ * @property network The business network that the state belongs to.
+ */
+interface NetworkState : ContractState {
     val network: Network
 }

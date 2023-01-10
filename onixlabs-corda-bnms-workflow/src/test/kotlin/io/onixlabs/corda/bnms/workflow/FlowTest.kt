@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package io.onixlabs.corda.bnms.workflow
 
+import io.onixlabs.corda.bnms.contract.Configuration
 import io.onixlabs.corda.bnms.contract.Network
 import io.onixlabs.corda.bnms.contract.membership.Membership
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
-import io.onixlabs.corda.bnms.contract.relationship.RelationshipMember
 import io.onixlabs.corda.bnms.contract.revocation.RevocationLock
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
@@ -38,7 +38,7 @@ import org.junit.jupiter.api.TestInstance
 abstract class FlowTest {
 
     protected val NETWORK by lazy { Network("Example Network") }
-    protected val MEMBERS by lazy { setOf(RelationshipMember(partyA), RelationshipMember(partyB)) }
+    protected val MEMBERS by lazy { mapOf(partyA to Configuration(), partyB to Configuration()) }
     protected val MEMBERSHIP by lazy { Membership(NETWORK, partyA) }
     protected val RELATIONSHIP by lazy { Relationship(NETWORK, MEMBERS) }
 
@@ -79,13 +79,13 @@ abstract class FlowTest {
     private fun setup() {
         _network = MockNetwork(
             MockNetworkParameters(
+                networkParameters = testNetworkParameters(minimumPlatformVersion = 11),
                 cordappsForAllNodes = listOf(
                     TestCordapp.findCordapp("io.onixlabs.corda.identityframework.contract"),
                     TestCordapp.findCordapp("io.onixlabs.corda.identityframework.workflow"),
                     TestCordapp.findCordapp("io.onixlabs.corda.bnms.contract"),
                     TestCordapp.findCordapp("io.onixlabs.corda.bnms.workflow")
-                ),
-                networkParameters = testNetworkParameters(minimumPlatformVersion = 4)
+                )
             )
         )
 

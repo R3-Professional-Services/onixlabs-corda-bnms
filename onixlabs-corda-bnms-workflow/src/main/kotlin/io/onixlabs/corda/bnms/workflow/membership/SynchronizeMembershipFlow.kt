@@ -3,13 +3,21 @@ package io.onixlabs.corda.bnms.workflow.membership
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.membership.Membership
 import io.onixlabs.corda.bnms.contract.membership.MembershipAttestation
+import io.onixlabs.corda.bnms.contract.membership.MembershipAttestationSchema.MembershipAttestationEntity
+import io.onixlabs.corda.bnms.workflow.ReceiveMembershipAndAttestationsStep
+import io.onixlabs.corda.bnms.workflow.SendMembershipAndAttestationsStep
+import io.onixlabs.corda.core.services.equalTo
+import io.onixlabs.corda.core.services.filter
+import io.onixlabs.corda.core.services.vaultServiceFor
+import io.onixlabs.corda.core.workflow.InitializeFlowStep
 import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.identityframework.workflow.INITIALIZING
+import io.onixlabs.corda.identityframework.workflow.attestations.PublishAttestationFlow
+import io.onixlabs.corda.identityframework.workflow.attestations.PublishAttestationFlowHandler
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
-import net.corda.core.node.services.Vault
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.ProgressTracker.Step
 import net.corda.core.utilities.unwrap
 
 class SynchronizeMembershipFlow(
@@ -20,17 +28,18 @@ class SynchronizeMembershipFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, SENDING, RECEIVING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            SendMembershipAndAttestationsStep,
+            ReceiveMembershipAndAttestationsStep
+        )
 
         private const val FLOW_VERSION_1 = 1
-
-        private object SENDING : ProgressTracker.Step("Sending our membership and attestations.")
-        private object RECEIVING : ProgressTracker.Step("Receiving their membership and attestations.")
     }
 
     @Suspendable
     override fun call(): Pair<StateAndRef<Membership>, Set<StateAndRef<MembershipAttestation>>>? {
-        currentStep(INITIALIZING)
+        currentStep(InitializeFlowStep)
         val network = ourMembership.state.data.network
         val holder = ourMembership.state.data.holder
 
@@ -38,13 +47,10 @@ class SynchronizeMembershipFlow(
             throw FlowException("Membership synchronization can only occur when the membership is owned by this node.")
         }
 
-        val attestations = subFlow(
-            FindMembershipAttestationsFlow(
-                holder = holder,
-                network = network,
-                stateStatus = Vault.StateStatus.UNCONSUMED
-            )
-        )
+        val attestations = serviceHub.vaultServiceFor<MembershipAttestation>().filter {
+            expression(MembershipAttestationEntity::holder equalTo holder)
+            expression(MembershipAttestationEntity::networkHash equalTo network.hash.toString())
+        }.toList()
 
         if (network.operator != null && attestations.size > 1) {
             throw FlowException("Only one membership attestation is required when a network operator is present.")
@@ -53,11 +59,11 @@ class SynchronizeMembershipFlow(
         val isMemberOfNetwork = session.sendAndReceive<Boolean>(network).unwrap { it }
 
         if (isMemberOfNetwork) {
-            currentStep(SENDING)
+            currentStep(SendMembershipAndAttestationsStep)
             sendOurMembership()
             sendOurAttestations(attestations)
 
-            currentStep(RECEIVING)
+            currentStep(ReceiveMembershipAndAttestationsStep)
             val theirMembership = receiveTheirMembership()
             val theirAttestations = receiveTheirAttestations()
 
@@ -77,7 +83,7 @@ class SynchronizeMembershipFlow(
         session.send(attestations.count())
 
         for (attestation in attestations) {
-            subFlow(PublishMembershipAttestationFlow(attestation, setOf(session)))
+            subFlow(PublishAttestationFlow(attestation, setOf(session)))
         }
     }
 
@@ -93,7 +99,7 @@ class SynchronizeMembershipFlow(
         val theirAttestationSize = session.receive<Int>().unwrap { it }
 
         for (index in 0 until theirAttestationSize) {
-            val transaction = subFlow(PublishMembershipAttestationFlowHandler(session))
+            val transaction = subFlow(PublishAttestationFlowHandler(session))
             val attestation = transaction.tx.outRefsOfType<MembershipAttestation>().single()
             attestations.add(attestation)
         }
@@ -110,23 +116,23 @@ class SynchronizeMembershipFlow(
     ) : FlowLogic<Pair<StateAndRef<Membership>, Set<StateAndRef<MembershipAttestation>>>?>() {
 
         private companion object {
-            object SYNCHRONIZING : ProgressTracker.Step("Synchronizing membership.") {
+            object SynchronizeMembershipAndAttestationsStep : Step("Synchronizing membership.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(SYNCHRONIZING)
+        override val progressTracker = ProgressTracker(SynchronizeMembershipAndAttestationsStep)
 
         @Suspendable
         override fun call(): Pair<StateAndRef<Membership>, Set<StateAndRef<MembershipAttestation>>>? {
-            currentStep(SYNCHRONIZING)
+            currentStep(SynchronizeMembershipAndAttestationsStep)
             val session = initiateFlow(counterparty)
 
             return subFlow(
                 SynchronizeMembershipFlow(
                     ourMembership,
                     session,
-                    SYNCHRONIZING.childProgressTracker()
+                    SynchronizeMembershipAndAttestationsStep.childProgressTracker()
                 )
             )
         }

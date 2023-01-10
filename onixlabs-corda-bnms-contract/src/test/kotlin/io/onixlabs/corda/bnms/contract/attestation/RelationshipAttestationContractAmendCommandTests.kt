@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import io.onixlabs.corda.bnms.contract.RELATIONSHIP
 import io.onixlabs.corda.bnms.contract.relationship.RelationshipAttestationContract
 import io.onixlabs.corda.bnms.contract.relationship.reject
 import io.onixlabs.corda.bnms.contract.withWrongNetwork
-import io.onixlabs.corda.identityframework.contract.AttestationContract
+import io.onixlabs.corda.identityframework.contract.attestations.AttestationContract
 import net.corda.testing.node.ledger
 import org.junit.jupiter.api.Test
 

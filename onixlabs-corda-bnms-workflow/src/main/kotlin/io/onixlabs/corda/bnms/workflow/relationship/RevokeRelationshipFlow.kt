@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,8 @@ package io.onixlabs.corda.bnms.workflow.relationship
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.relationship.Relationship
-import io.onixlabs.corda.bnms.contract.relationship.RelationshipContract
-import io.onixlabs.corda.bnms.workflow.countersign
-import io.onixlabs.corda.bnms.workflow.finalize
-import io.onixlabs.corda.bnms.workflow.transaction
-import io.onixlabs.corda.bnms.workflow.verifyAndSign
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
+import io.onixlabs.corda.bnms.workflow.addRevokedRelationship
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
@@ -40,25 +33,33 @@ class RevokeRelationshipFlow(
 ) : FlowLogic<SignedTransaction>() {
 
     companion object {
-        private const val FLOW_VERSION_1 = 1
-
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, COUNTERSIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            CollectTransactionSignaturesStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
+
+        private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
-        checkSufficientSessions(sessions, relationship.state.data)
+        currentStep(InitializeFlowStep)
+        checkSufficientSessionsForContractStates(sessions, relationship.state.data)
 
-        val transaction = transaction(relationship.state.notary) {
-            addInputState(relationship)
-            addCommand(RelationshipContract.Revoke, relationship.state.data.participants.map { it.owningKey })
+        val transaction = buildTransaction(relationship.state.notary) {
+            addRevokedRelationship(relationship)
         }
 
-        val partiallySignedTransaction = verifyAndSign(transaction, ourIdentity.owningKey)
-        val fullySignedTransaction = countersign(partiallySignedTransaction, sessions)
-        return finalize(fullySignedTransaction, sessions)
+        verifyTransaction(transaction)
+        val partiallySignedTransaction = signTransaction(transaction)
+        val fullySignedTransaction = collectSignatures(partiallySignedTransaction, sessions)
+        return finalizeTransaction(fullySignedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -69,23 +70,23 @@ class RevokeRelationshipFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object REVOKING : Step("Revoking relationship.") {
+            object RevokeRelationshipStep : Step("Revoking relationship.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(REVOKING)
+        override val progressTracker = ProgressTracker(RevokeRelationshipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(REVOKING)
+            currentStep(RevokeRelationshipStep)
             val sessions = initiateFlows(emptyList(), relationship.state.data)
 
             return subFlow(
                 RevokeRelationshipFlow(
                     relationship,
                     sessions,
-                    REVOKING.childProgressTracker()
+                    RevokeRelationshipStep.childProgressTracker()
                 )
             )
         }

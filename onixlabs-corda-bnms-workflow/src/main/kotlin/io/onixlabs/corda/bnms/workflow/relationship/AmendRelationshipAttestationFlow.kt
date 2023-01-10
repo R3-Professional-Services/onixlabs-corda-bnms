@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,15 @@ package io.onixlabs.corda.bnms.workflow.relationship
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.relationship.RelationshipAttestation
-import io.onixlabs.corda.bnms.workflow.finalize
+import io.onixlabs.corda.bnms.workflow.addAmendedRelationshipAttestation
 import io.onixlabs.corda.bnms.workflow.findRelationshipForAttestation
-import io.onixlabs.corda.bnms.workflow.transaction
-import io.onixlabs.corda.bnms.workflow.verifyAndSign
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
+import io.onixlabs.corda.core.workflow.*
+import io.onixlabs.corda.identityframework.workflow.checkAttestationExistsForAmendment
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.ProgressTracker.Step
 
 class AmendRelationshipAttestationFlow(
     private val oldAttestation: StateAndRef<RelationshipAttestation>,
@@ -40,23 +37,33 @@ class AmendRelationshipAttestationFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
-        checkSufficientSessions(sessions, newAttestation, oldAttestation.state.data)
+        currentStep(InitializeFlowStep)
+        checkSufficientSessionsForContractStates(sessions, newAttestation, oldAttestation.state.data)
+        checkAttestationExistsForAmendment(newAttestation)
 
-        val transaction = transaction(oldAttestation.state.notary) {
-            addAmendedAttestation(oldAttestation, newAttestation)
-            addReferenceState(findRelationshipForAttestation(newAttestation).referenced())
+        val relationship = findRelationshipForAttestation(newAttestation).referenced()
+
+        val transaction = buildTransaction(oldAttestation.state.notary) {
+            addAmendedRelationshipAttestation(oldAttestation, newAttestation, relationship)
         }
 
-        val signedTransaction = verifyAndSign(transaction, newAttestation.attestor.owningKey)
-        return finalize(signedTransaction, sessions)
+        verifyTransaction(transaction)
+        val signedTransaction = signTransaction(transaction)
+        return finalizeTransaction(signedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -68,16 +75,16 @@ class AmendRelationshipAttestationFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object AMENDING : ProgressTracker.Step("Amending relationship attestation.") {
+            object AmendRelationshipAttestationStep : Step("Amending relationship attestation.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(AMENDING)
+        override val progressTracker = ProgressTracker(AmendRelationshipAttestationStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(AMENDING)
+            currentStep(AmendRelationshipAttestationStep)
             val sessions = initiateFlows(emptyList(), newAttestation, oldAttestation.state.data)
 
             return subFlow(
@@ -85,7 +92,7 @@ class AmendRelationshipAttestationFlow(
                     oldAttestation,
                     newAttestation,
                     sessions,
-                    AMENDING.childProgressTracker()
+                    AmendRelationshipAttestationStep.childProgressTracker()
                 )
             )
         }

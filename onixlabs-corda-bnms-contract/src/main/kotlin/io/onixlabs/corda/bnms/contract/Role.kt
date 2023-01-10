@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,4 +16,15 @@
 
 package io.onixlabs.corda.bnms.contract
 
-class Role(value: String) : Setting<String>(ROLE, value.toUpperCase())
+/**
+ * Represents a network role.
+ *
+ * @property property The property of the role, which is always "Role".
+ * @property normalizedProperty The normalized property of the role, which is always "ROLE".
+ * @property value The value of the role.
+ * @property normalizedValue The normalized value of the role.
+ * @property hash The hash that uniquely identifies the role.
+ */
+class Role(value: String) : StringSetting(ROLE, value) {
+    companion object
+}

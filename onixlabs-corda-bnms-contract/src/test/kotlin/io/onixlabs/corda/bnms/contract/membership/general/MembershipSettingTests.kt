@@ -12,10 +12,10 @@ class MembershipSettingTests {
     fun `Membership hasSetting should return true when the expected setting is present`() {
 
         // Arrange
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSetting("Test", 123)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSetting("Test", 123) }
 
         // Act
-        val result = membership.hasSetting(Setting("Test", 123))
+        val result = membership.configuration.hasSetting(Setting("Test", 123))
 
         // Assert
         assertTrue(result)
@@ -25,10 +25,10 @@ class MembershipSettingTests {
     fun `Membership hasSetting should return true when the expected setting by property is present`() {
 
         // Arrange
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSetting("Test", 123)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSetting("Test", 123) }
 
         // Act
-        val result = membership.hasSetting("Test")
+        val result = membership.configuration.hasSetting("Test")
 
         // Assert
         assertTrue(result)
@@ -49,10 +49,10 @@ class MembershipSettingTests {
             Permission("Example Permission 1"),
             Permission("Example Permission 2")
         )
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSettings(settings)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSettings(settings) }
 
         // Act
-        val result = membership.getSettingsByType<Role>()
+        val result = membership.configuration.getSettingsByType<Role>()
 
         // Assert
         assertEquals(2, result.size)
@@ -73,10 +73,10 @@ class MembershipSettingTests {
             Permission("Example Permission 1"),
             Permission("Example Permission 2")
         )
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSettings(settings)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSettings(settings) }
 
         // Act
-        val result = membership.getSettingsByType<Setting<*>>("Key1")
+        val result = membership.configuration.getSettingsByType<Setting<*>>("Key1")
 
         // Assert
         assertEquals(2, result.size)
@@ -97,10 +97,10 @@ class MembershipSettingTests {
             Permission("Example Permission 1"),
             Permission("Example Permission 2")
         )
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSettings(settings)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSettings(settings) }
 
         // Act
-        val result = membership.getSettingsByValueType<Int>()
+        val result = membership.configuration.getSettingsByType<Setting<Int>>()
 
         // Assert
         assertEquals(2, result.size)
@@ -121,10 +121,10 @@ class MembershipSettingTests {
             Permission("Example Permission 1"),
             Permission("Example Permission 2")
         )
-        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).addSettings(settings)
+        val membership = Membership(DECENTRALIZED_NETWORK, IDENTITY_A.party).configure { addSettings(settings) }
 
         // Act
-        val result = membership.getSettingsByType<Setting<*>>("Key1")
+        val result = membership.configuration.getSettingsByType<Setting<*>>("Key1")
 
         // Assert
         assertEquals(2, result.size)

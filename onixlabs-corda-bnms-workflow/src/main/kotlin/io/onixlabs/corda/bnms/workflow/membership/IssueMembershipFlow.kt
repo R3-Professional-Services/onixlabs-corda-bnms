@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 ONIXLabs
+ * Copyright 2020-2022 ONIXLabs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,9 @@ package io.onixlabs.corda.bnms.workflow.membership
 
 import co.paralleluniverse.fibers.Suspendable
 import io.onixlabs.corda.bnms.contract.membership.Membership
-import io.onixlabs.corda.bnms.contract.membership.MembershipContract
+import io.onixlabs.corda.bnms.workflow.addIssuedMembership
 import io.onixlabs.corda.bnms.workflow.checkMembershipExists
-import io.onixlabs.corda.core.workflow.checkSufficientSessions
-import io.onixlabs.corda.core.workflow.currentStep
-import io.onixlabs.corda.core.workflow.getPreferredNotary
-import io.onixlabs.corda.core.workflow.initiateFlows
-import io.onixlabs.corda.identityframework.workflow.*
-import io.onixlabs.corda.bnms.workflow.*
+import io.onixlabs.corda.core.workflow.*
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.transactions.SignedTransaction
@@ -41,24 +36,31 @@ class IssueMembershipFlow(
 
     companion object {
         @JvmStatic
-        fun tracker() = ProgressTracker(INITIALIZING, GENERATING, VERIFYING, SIGNING, FINALIZING)
+        fun tracker() = ProgressTracker(
+            InitializeFlowStep,
+            BuildTransactionStep,
+            VerifyTransactionStep,
+            SignTransactionStep,
+            SendStatesToRecordStep,
+            FinalizeTransactionStep
+        )
 
         private const val FLOW_VERSION_1 = 1
     }
 
     @Suspendable
     override fun call(): SignedTransaction {
-        currentStep(INITIALIZING)
+        currentStep(InitializeFlowStep)
         checkMembershipExists(membership)
-        checkSufficientSessions(sessions, membership)
+        checkSufficientSessionsForContractStates(sessions, membership)
 
-        val transaction = transaction(notary) {
-            addOutputState(membership)
-            addCommand(MembershipContract.Issue, ourIdentity.owningKey)
+        val transaction = buildTransaction(notary) {
+            addIssuedMembership(membership, ourIdentity.owningKey)
         }
 
-        val signedTransaction = verifyAndSign(transaction, ourIdentity.owningKey)
-        return finalize(signedTransaction, sessions)
+        verifyTransaction(transaction)
+        val signedTransaction = signTransaction(transaction)
+        return finalizeTransaction(signedTransaction, sessions)
     }
 
     @StartableByRPC
@@ -71,16 +73,16 @@ class IssueMembershipFlow(
     ) : FlowLogic<SignedTransaction>() {
 
         private companion object {
-            object ISSUING : Step("Issuing membership.") {
+            object IssueMembershipStep : Step("Issuing membership.") {
                 override fun childProgressTracker() = tracker()
             }
         }
 
-        override val progressTracker = ProgressTracker(ISSUING)
+        override val progressTracker = ProgressTracker(IssueMembershipStep)
 
         @Suspendable
         override fun call(): SignedTransaction {
-            currentStep(ISSUING)
+            currentStep(IssueMembershipStep)
             val sessions = initiateFlows(observers, membership)
 
             return subFlow(
@@ -88,7 +90,7 @@ class IssueMembershipFlow(
                     membership,
                     notary ?: getPreferredNotary(),
                     sessions,
-                    ISSUING.childProgressTracker()
+                    IssueMembershipStep.childProgressTracker()
                 )
             )
         }
