@@ -46,11 +46,11 @@ class MembershipAttestationContract : AttestationContract(), Contract {
         const val CONTRACT_RULE_NETWORK =
             "On membership attestation issuing, the attestation network must be equal to the membership network."
 
-        const val CONTRACT_RULE_OPERATOR_ATTESTATION =
-            "On membership attestation issuing, if present, only the network operator can attest a membership state."
-
-        const val CONTRACT_RULE_SELF_ATTESTATION =
-            "On membership attestation issuing, if present, only the network operator can self-attest their membership state."
+//        const val CONTRACT_RULE_OPERATOR_ATTESTATION =
+//            "On membership attestation issuing, if present, only the network operator can attest a membership state."
+//
+//        const val CONTRACT_RULE_SELF_ATTESTATION =
+//            "On membership attestation issuing, if present, only the network operator can self-attest their membership state."
     }
 
     /**

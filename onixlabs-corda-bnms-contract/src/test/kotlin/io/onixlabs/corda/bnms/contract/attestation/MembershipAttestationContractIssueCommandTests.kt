@@ -99,31 +99,31 @@ class MembershipAttestationContractIssueCommandTests : ContractTest() {
         }
     }
 
-    @Test
-    fun `On membership attestation issuing, if present, only the network operator can attest a membership state`() {
-        services.ledger {
-            transaction {
-                val issuedMembershipA = issue(CENTRALIZED_MEMBERSHIP_IDENTITY_A)
-                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_C.party)
-                output(MembershipAttestationContract.ID, issuedAttestationA)
-                reference(issuedMembershipA.ref)
-                command(keysOf(IDENTITY_C), AttestationContract.Issue)
-                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_OPERATOR_ATTESTATION)
-            }
-        }
-    }
+//    @Test
+//    fun `On membership attestation issuing, if present, only the network operator can attest a membership state`() {
+//        services.ledger {
+//            transaction {
+//                val issuedMembershipA = issue(CENTRALIZED_MEMBERSHIP_IDENTITY_A)
+//                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_C.party)
+//                output(MembershipAttestationContract.ID, issuedAttestationA)
+//                reference(issuedMembershipA.ref)
+//                command(keysOf(IDENTITY_C), AttestationContract.Issue)
+//                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_OPERATOR_ATTESTATION)
+//            }
+//        }
+//    }
 
-    @Test
-    fun `On membership attestation issuing, if present, only the network operator can self-attest their membership state`() {
-        services.ledger {
-            transaction {
-                val issuedMembershipA = issue(DECENTRALIZED_MEMBERSHIP_IDENTITY_A)
-                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_A.party)
-                output(MembershipAttestationContract.ID, issuedAttestationA)
-                reference(issuedMembershipA.ref)
-                command(keysOf(IDENTITY_A), AttestationContract.Issue)
-                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_SELF_ATTESTATION)
-            }
-        }
-    }
+//    @Test
+//    fun `On membership attestation issuing, if present, only the network operator can self-attest their membership state`() {
+//        services.ledger {
+//            transaction {
+//                val issuedMembershipA = issue(DECENTRALIZED_MEMBERSHIP_IDENTITY_A)
+//                val issuedAttestationA = issuedMembershipA.accept(IDENTITY_A.party)
+//                output(MembershipAttestationContract.ID, issuedAttestationA)
+//                reference(issuedMembershipA.ref)
+//                command(keysOf(IDENTITY_A), AttestationContract.Issue)
+//                failsWith(MembershipAttestationContract.Issue.CONTRACT_RULE_SELF_ATTESTATION)
+//            }
+//        }
+//    }
 }
